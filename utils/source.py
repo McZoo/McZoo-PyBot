@@ -33,11 +33,18 @@ class Mirai:
         }
         """
 
-        reply = requests.post(self.httpip + '//auth', data=json.dumps({"authKey": self.config_dict['authKey']}))
+        reply = requests.post(self.httpip + '/auth', data=json.dumps({"authKey": self.config_dict['authKey']}))
         reply_dict = json.loads(bytes.decode(reply.content))
         session = {"sessionKey": reply_dict['session'], "qq": self.config_dict['qq']}
-        requests.post(self.httpip + '//verify', data=json.dumps(session))
+        requests.post(self.httpip + '/verify', data=json.dumps(session))
         return session  # return session and qq in dict form
+
+    def release_session(self, session):
+        """
+        release a Mirai Session
+        :return: nothing
+        """
+        requests.post(self.httpip + '/release', data=json.dumps(session))
 
     async def websockets_receive(self, session: dict):
         uri = self.websockets_ip + '/all?sessionKey=' + session['sessionKey']
