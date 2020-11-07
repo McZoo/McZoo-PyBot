@@ -1,0 +1,4 @@
+HttpIP: http://127.0.0.1:8080/
+Websockets_IP: ws://127.0.0.1:8080/
+authKey: Example_AuthKey666
+qq: 123456789
