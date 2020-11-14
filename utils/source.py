@@ -25,15 +25,31 @@ class Mirai:
         self.websockets_ip = self.config_dict['Websockets_IP']
         yaml_fs.close()
 
+    class Websockets:
+        def __init__(self, mirai_inst, session):
+            self.session = session
+            self.mirai_inst = mirai_inst
+
+        async def get_msg(self):
+            url = self.mirai_inst.websockets_ip + '/all?sessionKey=' + self.session.session_key
+            with websockets.connect(url) as current_ws_conn:
+                message_dict = json.loads(await current_ws_conn.recv())
+            return message_dict
+
+        async def get_msg_cycle(self, confirm: bool):
+            while confirm:
+                cur_msg = await self.get_msg()
+                print(cur_msg)
+
     class Session:
         def __init__(self, mirai_inst):
             """
             Automatically generates session
             """
-            self.session_dict = self.gen()
-            self.session_key = self.session_dict['session']
-            self.qq = self.session_dict['qq']
             self.mirai_inst = mirai_inst
+            self.session_dict = self.gen()
+            self.session_key = self.session_dict['sessionKey']
+            self.qq = self.session_dict['qq']
 
         def gen(self):
             """
@@ -59,12 +75,6 @@ class Mirai:
                     """
             requests.post(self.mirai_inst.httpip + '/release', data=json.dumps(self.session_dict))
 
-    async def websockets_receive(self, session: dict):
-        url = self.websockets_ip + '/all?sessionKey=' + session['sessionKey']
-        with websockets.connect(url) as current_ws_conn:
-            message_dict = json.loads(await current_ws_conn.recv())
-        return message_dict
-
     def send_text(self, session: dict, target: int, text: str, target_type: str = 'group'):
         """
         Send a plain text message to a friend/group
@@ -86,10 +96,10 @@ class Mirai:
             ]
         }
         if target_type == 'friend':
-            extra_uri = '/sendFriendMessage'
+            extra_url = '/sendFriendMessage'
         else:
-            extra_uri = '/sendGroupMessage'
-        uri = self.httpip + extra_uri
+            extra_url = '/sendGroupMessage'
+        uri = self.httpip + extra_url
         send_data = json.dumps(message_dict)
         reply = requests.post(uri, send_data)
         msg_id = -1
@@ -101,22 +111,24 @@ class Mirai:
 
 
 class MessageParser:
-    def __init__(self, mirai_inst, process_inst):
+    def __init__(self, mirai_inst, process_inst, session_inst):
         self.mirai_inst = mirai_inst
         self.process_inst = process_inst
+        self.session_inst = session_inst
 
     def command_parse(self, content: dict):  # TODO: Implement stop all process
-        if content['args'][0] == 'stop':
-            sys.exit()
-        try:
-            Process.proc_call(self.process_inst, content['args'][0], content['args'][1], content['args'][2:])
-        except NotImplementedError():
-            print("Not Implemented\n")
-        return
+        if content['sender'] == 'console':
+            if content['args'][0] == 'stop':
+                sys.exit()
+            try:
+                Process.proc_call(self.process_inst, content['args'][0], content['args'][1:])
+            except NotImplementedError():
+                print("Not Implemented\n")
+            return
 
     def console_input(self, using: bool):
         while using:
-            text = input()
+            text = input('>')
             command_list: list = text.split()
             content_dict = {
                 'sender': 'console',
@@ -128,24 +140,29 @@ class MessageParser:
 
 
 class Process:
-    def __init__(self):
-        self.pool = multiprocessing.Pool()
 
-    def proc_call(self, mod: str, func: str, args: list):
+    def proc_call(self, mod_func: str, args: list):
         """
-        Call a function
-        :param mod:
-        :param func:
+        Call a function using nod_func and args
+        :param mod_func:
         :param args:
         :return:
         """
-        module = importlib.import_module(mod)
-        caller = getattr(module, func)
-        self.pool.apply_async(caller, args)
-        return
-
-    def shut(self):
-        """
-        Closes the pool
-        """
-        self.pool.close()
+        usage_list = mod_func.split('.')
+        if len(usage_list) > 2:
+            mod_path = '.'.join(usage_list[0:-2])
+        else:
+            if len(usage_list) == 2:
+                mod_path = usage_list[0]
+            else:
+                mod_path = 'builtins'
+        func = usage_list[-1]
+        handler = None
+        try:
+            module = importlib.import_module(mod_path)
+            caller = getattr(module, func)
+            handler = multiprocessing.Process(target=caller, args=tuple(args), daemon=True)
+        except NotImplementedError:
+            raise
+        finally:
+            return handler
