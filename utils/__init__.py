@@ -162,3 +162,17 @@ class MessageParser:
             }
             self.command_parse(content_dict)
         return
+
+
+def listdir(path: str):
+    """
+    An implementation of os.listdir() , removes python related files & dirs
+    :param path: string
+    :return: list
+    """
+    origin: list = os.listdir(path)
+    if '__init__.py' in origin:
+        origin.remove('__init__.py')
+    if '__pycache__' in origin:
+        origin.remove('__pycache__')
+    return origin
