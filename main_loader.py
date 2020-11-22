@@ -6,7 +6,7 @@ import utils
 
 VERSION_TUPLE: tuple = (0, 0, 1)
 VERSION_STR: str = '0.0.1'
-
+# TODO: Auto Update
 if __name__ == '__main__':
     loaded_cores: dict = {}
     cores_const: dict = {}

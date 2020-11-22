@@ -1,10 +1,19 @@
 import os
+import sys
 import subprocess
+import time
 
 if __name__ == '__main__':
-    os.chdir('./mirai-console/')
+    os.chdir('./cores/mirai/mirai-console/')
     mirai_sub_proc = subprocess.Popen(
         ['java', '-cp', './libs/*',
          'net.mamoe.mirai.console.pure.MiraiConsolePureLoader',
          '--no-console'])
-    mirai_sub_proc.wait()
+    os.chdir('./../../../')
+    stop_file_path = os.path.abspath('./stop.lck')
+    while True:
+        if os.path.exists(stop_file_path):
+            mirai_sub_proc.terminate()
+            print('[Mirai Core]Core terminated.')
+            sys.exit()
+        time.sleep(0.001)

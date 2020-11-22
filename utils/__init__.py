@@ -1,7 +1,6 @@
 import importlib
 import json
 import os
-import sys
 import threading
 
 import requests
@@ -135,33 +134,6 @@ class Threader:
         gen_thread = threading.Thread(target=target_func, args=params, daemon=True)
         self.pool.append(gen_thread)
         gen_thread.start()
-
-
-class MessageParser:
-    def __init__(self, mirai_inst: Mirai, thread_inst: Threader, session_inst: Mirai.Session):
-        self.mirai_inst = mirai_inst
-        self.thread_inst = thread_inst
-        self.session_inst = session_inst
-
-    def command_parse(self, content: dict):
-        if content['sender'] == 'console':
-            if content['args'][0] == 'stop':
-                sys.exit()
-            try:
-                self.thread_inst.thread_call(content['content'])
-            except NotImplementedError():
-                print("Not Implemented\n")
-        return
-
-    def console_input(self, using: bool):
-        while using:
-            text = input('>')
-            content_dict = {
-                'sender': 'console',
-                'content': text
-            }
-            self.command_parse(content_dict)
-        return
 
 
 def listdir(path: str):
