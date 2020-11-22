@@ -1,6 +1,6 @@
 import os
-import sys
 import subprocess
+import sys
 import time
 
 if __name__ == '__main__':
