@@ -1,8 +1,8 @@
 import importlib
 import json
-import multiprocessing
 import os
 import sys
+import threading
 
 import requests
 import websockets
@@ -25,26 +25,11 @@ class Mirai:
         self.websockets_ip = self.config_dict['Websockets_IP']
         yaml_fs.close()
 
-    class Websockets:
-        def __init__(self, mirai_inst, session):
-            self.session = session
-            self.mirai_inst = mirai_inst
-
-        async def get_msg(self):
-            url = self.mirai_inst.websockets_ip + '/all?sessionKey=' + self.session.session_key
-            with websockets.connect(url) as current_ws_conn:
-                message_dict = json.loads(await current_ws_conn.recv())
-            return message_dict
-
-        async def get_msg_cycle(self, confirm: bool):
-            while confirm:
-                cur_msg = await self.get_msg()
-                print(cur_msg)
-
     class Session:
         def __init__(self, mirai_inst):
             """
             Automatically generates session
+            :param mirai_inst: Mirai
             """
             self.mirai_inst = mirai_inst
             self.session_dict = self.gen()
@@ -74,6 +59,22 @@ class Mirai:
                     :return: nothing
                     """
             requests.post(self.mirai_inst.httpip + '/release', data=json.dumps(self.session_dict))
+
+    class Websockets:
+        def __init__(self, mirai_inst, session):
+            self.session = session
+            self.mirai_inst = mirai_inst
+
+        async def get_msg(self):
+            url = self.mirai_inst.websockets_ip + '/all?sessionKey=' + self.session.session_key
+            with websockets.connect(url) as current_ws_conn:
+                message_dict = json.loads(await current_ws_conn.recv())
+            return message_dict
+
+        async def get_msg_cycle(self, confirm: bool):
+            while confirm:
+                cur_msg = await self.get_msg()
+                print(cur_msg)  # TODO
 
     def send_text(self, session: dict, target: int, text: str, target_type: str = 'group'):
         """
@@ -110,62 +111,54 @@ class Mirai:
             return msg_id
 
 
+class Threader:
+    def __init__(self):
+        self.pool: list = []
+
+    def thread_call(self, command: str):
+        split_comm: list = command.split('(', 1)
+        func_full: str = split_comm[0]
+        params_str: str = str.rstrip(split_comm[1], ')')
+        params: list = params_str.split(',')
+        func_list: list = func_full.rsplit('.', 2)
+        if len(func_list) >= 3:
+            package: str = func_list[2]
+        else:
+            package: str = ''
+        if len(func_list) >= 2:
+            module: str = func_list[1]
+        else:
+            module: str = 'builtins'
+        func: str = func_list[0]
+        imported_module = importlib.import_module(module, package)
+        target_func = getattr(imported_module, func)
+        gen_thread = threading.Thread(target=target_func, args=params, daemon=True)
+        self.pool.append(gen_thread)
+        gen_thread.start()
+
+
 class MessageParser:
-    def __init__(self, mirai_inst, process_inst, session_inst):
+    def __init__(self, mirai_inst: Mirai, thread_inst: Threader, session_inst: Mirai.Session):
         self.mirai_inst = mirai_inst
-        self.process_inst = process_inst
+        self.thread_inst = thread_inst
         self.session_inst = session_inst
 
-    def command_parse(self, content: dict):  # TODO: Implement stop all process
+    def command_parse(self, content: dict):
         if content['sender'] == 'console':
             if content['args'][0] == 'stop':
                 sys.exit()
             try:
-                Process.proc_call(self.process_inst, content['args'][0], content['args'][1:])
+                self.thread_inst.thread_call(content['content'])
             except NotImplementedError():
                 print("Not Implemented\n")
-            return
+        return
 
     def console_input(self, using: bool):
         while using:
             text = input('>')
-            command_list: list = text.split()
             content_dict = {
                 'sender': 'console',
-                'content': text,
-                'args': command_list
+                'content': text
             }
             self.command_parse(content_dict)
         return
-
-
-class Process:
-    def __init__(self):
-        self.counter: int = 0
-
-    def proc_call(self, mod_func: str, args: list):
-        """
-        Call a function using nod_func and args
-        :param mod_func:
-        :param args:
-        :return:
-        """
-        self.counter += 1
-        usage_list = mod_func.split('.')
-        if len(usage_list) > 2:
-            mod_path = '.'.join(usage_list[0:-2])
-        else:
-            if len(usage_list) == 2:
-                mod_path = usage_list[0]
-            else:
-                mod_path = 'builtins'
-        func = usage_list[-1]
-        handler = None
-        try:
-            module = importlib.import_module(mod_path)
-            caller = getattr(module, func)
-            handler = multiprocessing.Process(target=caller, args=tuple(args), daemon=True)
-        except NotImplementedError:
-            raise
-        finally:
-            return handler
