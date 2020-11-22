@@ -1,4 +1,4 @@
-config.yml
+configs/loader_config.yml
 venv/
 .idea/
 test.py
