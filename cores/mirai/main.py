@@ -5,20 +5,6 @@ import subprocess
 import sys
 import threading
 import time
-import re
-
-import utils
-
-
-def message_putting_loop(sub_proc: subprocess.Popen, logger_inst: utils.Logger):
-    while True:
-        line = bytes.decode(sub_proc.stdout.readline(), encoding='gbk')
-        if re.match(r'.*I/main: mirai-console started successfully.*', line) is not None:
-            ok_file_path = os.path.abspath('./mirai_ok.lck')
-            ok_fs = open(ok_file_path, 'w')
-            ok_fs.close()
-        logger_inst.log('debug', line)
-
 
 import utils
 
