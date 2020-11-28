@@ -8,14 +8,24 @@ import utils
 VERSION_TUPLE: tuple = (0, 0, 1)
 VERSION_STR: str = '0.0.1'
 REGISTER_NAME = 'Pure Loader'
+LOG_LEVEL = 'debug'
 # TODO: Auto Update
 if __name__ == '__main__':
-    print('=====PyBot Loader=====')
+    exec_time = time.strftime('%Y-%m-%d %H_%M_%S', time.localtime(time.time()))
+    log_path = './logs/' + exec_time + '.log'
+    logger = utils.Logger('LOADER', LOG_LEVEL, log_path)
+    logger.log('info', '=====PyBot Loader=====')
     try:
+        # Create log share
+        log_fs = open('./log.py', 'w')
+        log_content: list = ['log_path: str = \'' + log_path + '\'', '']
+        log_fs.writelines(log_content)
+        log_fs.close()
+        # Create log share end
         loaded_cores: dict = {}
         cores_const: dict = {}
         cores_list: list = utils.listdir('./cores')
-        print(REGISTER_NAME + ' is now version ' + VERSION_STR)
+        logger.log('info', REGISTER_NAME + ' is now version ' + VERSION_STR)
         for u in cores_list:
             '''
             Load cores
@@ -26,7 +36,7 @@ if __name__ == '__main__':
                 raise ModuleNotFoundError('Incompatible Core')
             ver_str = module.VERSION_STR
             reg_name = module.REGISTER_NAME
-            print('Core ' + reg_name + ' is now version ' + ver_str)
+            logger.log('info', 'Core ' + reg_name + ' is now version ' + ver_str)
         cfg = utils.Config('./configs/loader_config.yml')
         # Mirai Starter
         if 'mirai' not in cores_list:
@@ -38,7 +48,8 @@ if __name__ == '__main__':
             loaded_cores['mirai'] = executing
             cores_list.remove('mirai')
         # Mirai Starter End
-        time.sleep(20)
+        while os.path.exists('./mirai_ok.lck') is False:
+            pass
         # Create session
         session = utils.Session(cfg)
         session_fs = open('./session.py', 'w')
@@ -62,7 +73,9 @@ if __name__ == '__main__':
             loaded_cores[u].wait()
         if os.path.exists('./session.py'):
             os.remove('./session.py')
+        if os.path.exists('./log.py'):
+            os.remove('./log.py')
     except Exception as e:
-        print(e)
+        logger.stacktrace(e, 'error')
     finally:
-        print('=====Loader Exit=====')
+        logger.log('info', '=====Loader Exit=====')

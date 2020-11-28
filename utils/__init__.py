@@ -150,28 +150,34 @@ class Logger:
     """
     Implementation & wrapping of logging
     """
-    def __init__(self, name: str, lvl: str, file_path: str):
+    def __init__(self, name: str, basic_lvl: str, file_path: str):
+        """
+
+        :param name: string, name of the logger
+        :param basic_lvl: string, one of 'debug','info','warning','error','critical'
+        :param file_path: string, the path of log saving path
+        """
         self.logger_inst = logging.Logger(name)
         self.stream_handler = logging.StreamHandler()
         self.file_handler = logging.FileHandler(file_path)
         self.formatter = logging.Formatter('[%(name)s] [%(asctime)s] [%(levelname)s] %(message)s')
-        if lvl == 'DEBUG':
+        if basic_lvl == 'debug':
             self.logger_inst.setLevel(logging.DEBUG)
             self.stream_handler.setLevel(logging.DEBUG)
             self.file_handler.setLevel(logging.DEBUG)
-        if lvl == 'INFO':
+        if basic_lvl == 'info':
             self.logger_inst.setLevel(logging.INFO)
             self.stream_handler.setLevel(logging.INFO)
             self.file_handler.setLevel(logging.INFO)
-        if lvl == 'WARNING':
+        if basic_lvl == 'warning':
             self.logger_inst.setLevel(logging.WARNING)
             self.stream_handler.setLevel(logging.WARNING)
             self.file_handler.setLevel(logging.WARNING)
-        if lvl == 'ERROR':
+        if basic_lvl == 'error':
             self.logger_inst.setLevel(logging.ERROR)
             self.stream_handler.setLevel(logging.ERROR)
             self.file_handler.setLevel(logging.ERROR)
-        if lvl == 'CRITICAL':
+        if basic_lvl == 'critical':
             self.logger_inst.setLevel(logging.CRITICAL)
             self.stream_handler.setLevel(logging.CRITICAL)
             self.file_handler.setLevel(logging.CRITICAL)
@@ -179,3 +185,28 @@ class Logger:
         self.file_handler.setFormatter(self.formatter)
         self.logger_inst.addHandler(self.stream_handler)
         self.logger_inst.addHandler(self.file_handler)
+
+    def log(self, lvl: str, message: str):
+        if lvl == 'debug':
+            self.logger_inst.debug(message)
+        if lvl == 'info':
+            self.logger_inst.info(message)
+        if lvl == 'warning':
+            self.logger_inst.warning(message)
+        if lvl == 'error':
+            self.logger_inst.error(message)
+        if lvl == 'critical':
+            self.logger_inst.critical(message)
+
+    def stacktrace(self, exception: Exception, lvl: str):
+        self.logger_inst.exception(exception)
+        if lvl == 'debug':
+            self.logger_inst.debug(exception, exc_info=True)
+        if lvl == 'info':
+            self.logger_inst.info(exception, exc_info=True)
+        if lvl == 'warning':
+            self.logger_inst.warning(exception, exc_info=True)
+        if lvl == 'error':
+            self.logger_inst.error(exception, exc_info=True)
+        if lvl == 'critical':
+            self.logger_inst.critical(exception, exc_info=True)
