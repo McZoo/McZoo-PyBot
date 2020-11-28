@@ -20,8 +20,10 @@ if __name__ == '__main__':
             '''
             Load cores
             '''
-            module = importlib.import_module('cores.' + u + '.const')
+            module = importlib.import_module('cores.' + u)
             cores_const[u] = module
+            if VERSION_TUPLE[0] != module.VERSION_TUPLE[0]:
+                raise ModuleNotFoundError('Incompatible Core')
             ver_str = module.VERSION_STR
             reg_name = module.REGISTER_NAME
             print('Core ' + reg_name + ' is now version ' + ver_str)

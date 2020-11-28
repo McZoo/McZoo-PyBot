@@ -1,5 +1,6 @@
 import importlib
 import json
+import logging
 import os
 import threading
 
@@ -143,3 +144,38 @@ def listdir(path: str):
     if '__pycache__' in origin:
         origin.remove('__pycache__')
     return origin
+
+
+class Logger:
+    """
+    Implementation & wrapping of logging
+    """
+    def __init__(self, name: str, lvl: str, file_path: str):
+        self.logger_inst = logging.Logger(name)
+        self.stream_handler = logging.StreamHandler()
+        self.file_handler = logging.FileHandler(file_path)
+        self.formatter = logging.Formatter('[%(name)s] [%(asctime)s] [%(levelname)s] %(message)s')
+        if lvl == 'DEBUG':
+            self.logger_inst.setLevel(logging.DEBUG)
+            self.stream_handler.setLevel(logging.DEBUG)
+            self.file_handler.setLevel(logging.DEBUG)
+        if lvl == 'INFO':
+            self.logger_inst.setLevel(logging.INFO)
+            self.stream_handler.setLevel(logging.INFO)
+            self.file_handler.setLevel(logging.INFO)
+        if lvl == 'WARNING':
+            self.logger_inst.setLevel(logging.WARNING)
+            self.stream_handler.setLevel(logging.WARNING)
+            self.file_handler.setLevel(logging.WARNING)
+        if lvl == 'ERROR':
+            self.logger_inst.setLevel(logging.ERROR)
+            self.stream_handler.setLevel(logging.ERROR)
+            self.file_handler.setLevel(logging.ERROR)
+        if lvl == 'CRITICAL':
+            self.logger_inst.setLevel(logging.CRITICAL)
+            self.stream_handler.setLevel(logging.CRITICAL)
+            self.file_handler.setLevel(logging.CRITICAL)
+        self.stream_handler.setFormatter(self.formatter)
+        self.file_handler.setFormatter(self.formatter)
+        self.logger_inst.addHandler(self.stream_handler)
+        self.logger_inst.addHandler(self.file_handler)
