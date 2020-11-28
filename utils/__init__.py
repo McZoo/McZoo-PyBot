@@ -22,12 +22,15 @@ class Config:
 
 
 class Session:
-    def __init__(self, config_inst: Config):
+    def __init__(self, config_inst: Config, restore=False, session_dict=None):
         """
         Automatically generates session
         """
         self.config = config_inst
-        self.session_dict = self.gen()
+        if not restore:
+            self.session_dict = self.gen()
+        else:
+            self.session_dict = session_dict
         self.session_key = self.session_dict['sessionKey']
         self.qq = self.session_dict['qq']
 
@@ -57,60 +60,27 @@ class Session:
 
 
 class Websockets:
-    def __init__(self, mirai_inst, session):
+    def __init__(self, ws_ip, session):
         self.session = session
-        self.mirai_inst = mirai_inst
+        self.ws_ip = ws_ip
 
     async def get_msg(self):
-        url = self.mirai_inst.websockets_ip + '/all?sessionKey=' + self.session.session_key
+        url = self.ws_ip + '/all?sessionKey=' + self.session.session_key
         with websockets.connect(url) as current_ws_conn:
             message_dict = json.loads(await current_ws_conn.recv())
         return message_dict
 
-    async def get_msg_cycle(self, confirm: bool):
+    async def print_msg_cycle(self, confirm: bool):
         while confirm:
             cur_msg = await self.get_msg()
-            print(cur_msg)  # TODO
-
-
-def send_dict(config_inst: Config, session: dict, target: int, content: dict, target_type: str = 'group'):
-    """
-    Send a dict-wrapped message to a friend/group
-    returns message id if success , else -1
-    :param config_inst: Config instance
-    :param session: dict from Mirai.gen_session()
-    :param target: int
-    :param content: dict
-    :param target_type: 'friend' or 'group'
-    :return:
-    """
-    message_dict = {
-        'sessionKey': session['session'],
-        'target': target,
-        'messageChain': [
-            content
-        ]
-    }
-    if target_type == 'friend':
-        extra_url = '/sendFriendMessage'
-    else:
-        extra_url = '/sendGroupMessage'
-    url = config_inst.httpip + extra_url
-    send_data = json.dumps(message_dict)
-    reply = requests.post(url, send_data)
-    msg_id = -1
-    try:
-        reply_dict = json.loads(reply.text)
-        msg_id = reply_dict['messageId']
-    finally:
-        return msg_id
+            print(cur_msg)
 
 
 class Threader:
     def __init__(self):
         self.pool: list = []
 
-    def thread_call(self, command: str):
+    def command_call(self, command: str):
         split_comm: list = command.split('(', 1)
         func_full: str = split_comm[0]
         params_str: str = str.rstrip(split_comm[1], ')')
@@ -132,24 +102,11 @@ class Threader:
         gen_thread.start()
 
 
-def listdir(path: str):
-    """
-    An implementation of os.listdir() , removes python related files & dirs
-    :param path: string
-    :return: list
-    """
-    origin: list = os.listdir(path)
-    if '__init__.py' in origin:
-        origin.remove('__init__.py')
-    if '__pycache__' in origin:
-        origin.remove('__pycache__')
-    return origin
-
-
 class Logger:
     """
     Implementation & wrapping of logging
     """
+
     def __init__(self, name: str, basic_lvl: str, file_path: str):
         """
 
@@ -210,3 +167,100 @@ class Logger:
             self.logger_inst.error(exception, exc_info=True)
         if lvl == 'critical':
             self.logger_inst.critical(exception, exc_info=True)
+
+
+def import_plugins(plugin_folder_path: str, logger: Logger):
+    plugin_dict = {}
+    entries: list[str] = listdir(plugin_folder_path)
+    for i in entries:
+        i.removesuffix('.py')
+        tmp_mod = importlib.import_module('plugins.' + i)
+        if plugin_dict.get(tmp_mod.REGISTER_NAME) is not None:
+            raise BufferError('Duplicated plugin')
+        else:
+            plugin_dict[tmp_mod.REGISTER_NAME] = tmp_mod
+    logger.log('info', 'Loaded ' + str(len(plugin_dict)) + ' plugin(s).')
+    return plugin_dict
+
+
+def listdir(path: str):
+    """
+    An implementation of os.listdir() , removes python related files & dirs
+    :param path: string
+    :return: list
+    """
+    origin: list = os.listdir(path)
+    if '__init__.py' in origin:
+        origin.remove('__init__.py')
+    if '__pycache__' in origin:
+        origin.remove('__pycache__')
+    return origin
+
+
+def send_list(config_inst: Config, session: dict, target: int, content: list, target_type: str = 'group'):
+    """
+    Send a dict-wrapped message to a friend/group
+    returns message id if success , else -1
+    :param config_inst: Config instance
+    :param session: dict from Mirai.gen_session()
+    :param target: int
+    :param content: list
+    :param target_type: 'friend' or 'group'
+    :return:
+    """
+    message_dict = {
+        'sessionKey': session['session'],
+        'target': target,
+        'messageChain': content
+    }
+    if target_type == 'friend':
+        extra_url = '/sendFriendMessage'
+    else:
+        extra_url = '/sendGroupMessage'
+    url = config_inst.httpip + extra_url
+    send_data = json.dumps(message_dict)
+    reply = requests.post(url, send_data)
+    msg_id = -1
+    try:
+        reply_dict = json.loads(reply.text)
+        msg_id = reply_dict['messageId']
+    finally:
+        return msg_id
+
+
+def thread_call(module: object, func: str, param: list or tuple):
+    target_func = getattr(module, func)
+    gen_thread = threading.Thread(target=target_func, args=param, daemon=True)
+    gen_thread.start()
+
+
+def msg_basic_parser(msg_dict: dict):
+    """
+    :return:
+    {
+        'sender_id': int
+        'msg_id': int
+        (optional) 'plain': list[str]
+        (optional) 'at': list[int]
+    }
+    """
+    if msg_dict['type'] == 'GroupMessage':
+        returning: dict = {}
+        msg: list = msg_dict['messageChain']
+        sender = msg_dict['sender']
+        sender_id = sender['id']
+        returning['sender_id'] = sender_id
+        plain_list: list = []
+        at_list: list = []
+        for dicts in msg:
+            if dicts['type'] == 'Source':
+                returning['msg_id'] = dicts['id']
+            if dicts['type'] == 'Plain':
+                plain_list.append(dicts['text'])
+            if dicts['type'] == 'At':
+                at_list.append(dicts['target'])
+        if len(plain_list) > 0:
+            returning['plain'] = plain_list
+        if len(at_list) > 0:
+            returning['at'] = at_list
+        return returning

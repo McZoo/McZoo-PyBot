@@ -37,7 +37,7 @@ if __name__ == '__main__':
             ver_str = module.VERSION_STR
             reg_name = module.REGISTER_NAME
             logger.log('info', 'Core ' + reg_name + ' is now version ' + ver_str)
-        cfg = utils.Config('./configs/loader_config.yml')
+        cfg = utils.Config('configs/config.yml')
         # Mirai Starter
         if 'mirai' not in cores_list:
             raise ModuleNotFoundError('Mirai is a necessary core')
