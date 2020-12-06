@@ -1,7 +1,9 @@
 import importlib
 import json
 import logging
+import multiprocessing
 import os
+import sys
 import threading
 
 import requests
@@ -65,8 +67,8 @@ class Websockets:
         self.ws_ip = ws_ip
 
     async def get_msg(self):
-        url = self.ws_ip + '/all?sessionKey=' + self.session.session_key
-        with websockets.connect(url) as current_ws_conn:
+        url = self.ws_ip + '/message?sessionKey=' + self.session.session_key
+        async with websockets.connect(url) as current_ws_conn:
             message_dict = json.loads(await current_ws_conn.recv())
         return message_dict
 
@@ -143,7 +145,11 @@ class Logger:
         self.logger_inst.addHandler(self.stream_handler)
         self.logger_inst.addHandler(self.file_handler)
 
-    def log(self, lvl: str, message: str):
+    def log(self, lvl: str, message: str) -> None:
+        """
+        :param lvl: 'debug'/'info'/'warning'/'error'/'critical'
+        :param message:
+        """
         if lvl == 'debug':
             self.logger_inst.debug(message)
         if lvl == 'info':
@@ -169,23 +175,10 @@ class Logger:
             self.logger_inst.critical(exception, exc_info=True)
 
 
-def import_plugins(plugin_folder_path: str, logger: Logger):
-    plugin_dict = {}
-    entries: list[str] = listdir(plugin_folder_path)
-    for i in entries:
-        i.removesuffix('.py')
-        tmp_mod = importlib.import_module('plugins.' + i)
-        if plugin_dict.get(tmp_mod.REGISTER_NAME) is not None:
-            raise BufferError('Duplicated plugin')
-        else:
-            plugin_dict[tmp_mod.REGISTER_NAME] = tmp_mod
-    logger.log('info', 'Loaded ' + str(len(plugin_dict)) + ' plugin(s).')
-    return plugin_dict
-
-
-def listdir(path: str):
+def listdir(path: str, remove_suffix: bool = False):
     """
     An implementation of os.listdir() , removes python related files & dirs
+    :param remove_suffix: bool
     :param path: string
     :return: list
     """
@@ -194,13 +187,34 @@ def listdir(path: str):
         origin.remove('__init__.py')
     if '__pycache__' in origin:
         origin.remove('__pycache__')
-    return origin
+    if not remove_suffix:
+        return origin
+    else:
+        new = []
+        for i in origin:
+            new.append(os.path.splitext(i)[0])
+        return new
 
 
-def send_list(config_inst: Config, session: dict, target: int, content: list, target_type: str = 'group'):
+def import_plugins(plugin_folder_path: str, logger: Logger):
+    plugin_dict = {}
+    entries: list[str] = listdir(plugin_folder_path, True)
+    for i in entries:
+        tmp_mod = importlib.import_module('plugins.' + i)
+        if plugin_dict.get(tmp_mod.REGISTRY_NAME) is not None:
+            raise AttributeError('Duplicated plugin')
+        else:
+            plugin_dict[tmp_mod.REGISTRY_NAME] = tmp_mod
+    logger.log('info', 'Loaded ' + str(len(plugin_dict)) + ' plugin(s).')
+    return plugin_dict
+
+
+def send_list(config_inst: Config, session: dict, target: int, content: list, logger: Logger,
+              target_type: str = 'group'):
     """
     Send a dict-wrapped message to a friend/group
     returns message id if success , else -1
+    :param logger: utils.Logger
     :param config_inst: Config instance
     :param session: dict from Mirai.gen_session()
     :param target: int
@@ -209,7 +223,7 @@ def send_list(config_inst: Config, session: dict, target: int, content: list, ta
     :return:
     """
     message_dict = {
-        'sessionKey': session['session'],
+        'sessionKey': session['sessionKey'],
         'target': target,
         'messageChain': content
     }
@@ -220,6 +234,7 @@ def send_list(config_inst: Config, session: dict, target: int, content: list, ta
     url = config_inst.httpip + extra_url
     send_data = json.dumps(message_dict)
     reply = requests.post(url, send_data)
+    logger.log('debug', reply.text)
     msg_id = -1
     try:
         reply_dict = json.loads(reply.text)
@@ -249,6 +264,7 @@ def msg_basic_parser(msg_dict: dict):
         msg: list = msg_dict['messageChain']
         sender = msg_dict['sender']
         sender_id = sender['id']
+        returning['group_id'] = sender['group']['id']
         returning['sender_id'] = sender_id
         plain_list: list = []
         at_list: list = []
@@ -264,3 +280,10 @@ def msg_basic_parser(msg_dict: dict):
         if len(at_list) > 0:
             returning['at'] = at_list
         return returning
+
+
+def shut_monitor(stop_queue: multiprocessing.Queue):
+    while True:
+        msg = stop_queue.get(block=True)
+        if msg == 'STOP':
+            sys.exit()
