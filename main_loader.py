@@ -1,8 +1,9 @@
 import importlib
 import multiprocessing
 import os
+import sys
 import time
-
+import subprocess
 import utils
 
 VERSION_TUPLE: tuple = (0, 0, 1)
@@ -58,14 +59,21 @@ if __name__ == '__main__':
             loaded_cores[u] = multiprocessing.Process(target=cores[u].main,
                                                       args=(log_path, session, cfg, stop_queues[u]))
             loaded_cores[u].start()
+        subprocess.Popen(args=['python', './input_parser.py'])
         while True:
             if os.path.exists('./stop.lck'):
                 for u in loaded_cores.keys():
+                    if u == 'mirai':
+                        continue
                     try:
                         stop_msg = stop_queues[u].put('STOP')
                     finally:
                         pass
+                stop_queues['mirai'].put('STOP')
+                os.remove('./stop.lck')
+                logger.log('info', '=====Loader Exit=====')
+                break
     except Exception as e:
         logger.stacktrace(e, 'error')
     finally:
-        logger.log('info', '=====Loader Exit=====')
+        sys.exit()

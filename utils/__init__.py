@@ -209,12 +209,10 @@ def import_plugins(plugin_folder_path: str, logger: Logger):
     return plugin_dict
 
 
-def send_list(config_inst: Config, session: dict, target: int, content: list, logger: Logger,
-              target_type: str = 'group'):
+def send_list(config_inst: Config, session: dict, target: int, content: list, target_type: str = 'group'):
     """
     Send a dict-wrapped message to a friend/group
     returns message id if success , else -1
-    :param logger: utils.Logger
     :param config_inst: Config instance
     :param session: dict from Mirai.gen_session()
     :param target: int
@@ -234,7 +232,6 @@ def send_list(config_inst: Config, session: dict, target: int, content: list, lo
     url = config_inst.httpip + extra_url
     send_data = json.dumps(message_dict)
     reply = requests.post(url, send_data)
-    logger.log('debug', reply.text)
     msg_id = -1
     try:
         reply_dict = json.loads(reply.text)
