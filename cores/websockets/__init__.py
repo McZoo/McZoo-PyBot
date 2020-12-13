@@ -2,6 +2,7 @@ import asyncio
 import sys
 import threading
 from multiprocessing import shared_memory
+import time
 
 import utils
 
@@ -14,11 +15,13 @@ def main(log_path: str, session: utils.Session, cfg: utils.Config, mem_str: str)
     ws_ip = cfg.websockets_ip
     ws = utils.Websockets(ws_ip, session)
     logger = utils.Logger('WEBSOCKETS', 'debug', log_path)
+    logger.log('info', 'Started core.')
     plugin_dict = utils.import_plugins('./plugins/', logger)
     parser = threading.Thread(target=parse, args=(plugin_dict, ws, session, cfg, logger))
     parser.start()
     mem = shared_memory.SharedMemory(name=mem_str, create=False)
     while True:
+        time.sleep(0.01)
         if mem == utils.MemConst.stop():
             logger.log('info', 'Core stopped.')
             sys.exit()

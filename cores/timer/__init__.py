@@ -12,10 +12,12 @@ REGISTRY_NAME: str = 'timer'
 
 def main(log_path: str, session: utils.Session, cfg: utils.Config, mem_str: str):
     logger = utils.Logger('TIMER', 'debug', log_path)
+    logger.log('info', 'Started core.')
     parser = threading.Thread(target=parse, args=(cfg, session))
     parser.start()
     mem = shared_memory.SharedMemory(name=mem_str, create=False)
     while True:
+        time.sleep(0.01)
         if mem == utils.MemConst.stop():
             logger.log('info', 'Core stopped.')
             sys.exit()

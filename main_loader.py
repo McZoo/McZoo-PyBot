@@ -49,7 +49,6 @@ if __name__ == '__main__':
         # Mirai Starter
         mirai_ok_mem = shared_memory.SharedMemory(name='mirai_ok', create=True, size=1)
         mirai_ok_mem.buf[0] = utils.MemConst.init()
-        stage = 1
         msg_memory = shared_memory.SharedMemory(name='msg_mem', create=True, size=1)
         msg_memory.buf[0] = utils.MemConst.init()
         if 'mirai' not in cores_list:
@@ -59,7 +58,7 @@ if __name__ == '__main__':
                                                             args=(log_path, 'mirai_ok', 'msg_mem'))
             loaded_cores['mirai'].start()
         while mirai_ok_mem.buf[0] != utils.MemConst.stop():
-            pass
+            time.sleep(0.01)
         mirai_ok_mem.close()
         mirai_ok_mem.unlink()
         # Mirai Starter End
@@ -74,11 +73,13 @@ if __name__ == '__main__':
             loaded_cores[u] = multiprocessing.Process(target=cores[u].main,
                                                       args=(log_path, session, cfg, 'msg_mem'))
             loaded_cores[u].start()
+            logger.log('info', 'Started core {0}.'.format(u))
         stop_mem = shared_memory.SharedMemory(name='stop_mem', create=True, size=1)
         stop_mem.buf[0] = utils.MemConst.init()
         input_thread = threading.Thread(target=input_parser, args=('stop_mem',))
         input_thread.start()
         while True:
+            time.sleep(0.01)
             if stop_mem.buf[0] == utils.MemConst.stop():
                 stop_mem.close()
                 stop_mem.unlink()

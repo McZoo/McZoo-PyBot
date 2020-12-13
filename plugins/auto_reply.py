@@ -84,21 +84,25 @@ def websockets_parser(parsed_msg: dict, logger: utils.Logger, session: utils.Ses
                         "text": "请大家领会精神"}
                 ]
                 utils.send_list(cfg, session.session_dict, parsed_msg['group_id'], reply_list, 'group')
-            if re.search(r'(现在时间)|(北京时间)', i) is not None:
+            if i == '!time':
                 reply_list = [
                     {
                         "type": "Plain",
                         "text": "现在是 {0}".format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))}
                 ]
                 utils.send_list(cfg, session.session_dict, parsed_msg['group_id'], reply_list, 'group')
-            if re.search(r'!!help', i) is not None:
+            if i == '!help':
                 reply_list = [
                     {
                         "type": "Plain",
                         "text": 'at我可得到 w?\r\n'},
                     {
                         "type": "Plain",
-                        "text": '报时：北京时间 或 现在时间\r\n'
+                        "text": '!time #报时\r\n'
+                    },
+                    {
+                        "type": "Plain",
+                        "text": '!ping SERVER_ADDRESS [Port] #Ping服务器\r\n'
                     },
                     {
                         "type": "Plain",

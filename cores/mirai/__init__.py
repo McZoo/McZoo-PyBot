@@ -3,6 +3,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 from multiprocessing import shared_memory
 
 import utils
@@ -19,7 +20,7 @@ def message_putting_loop(sub_proc: subprocess.Popen, logger_inst: utils.Logger, 
         line = bytes.decode(origin, encoding='gbk')
         line = re.sub(r'[0-9]*-[0-9]*-[0-9]* [0-9]*:[0-9]*:[0-9]* ', '', line)
         line = re.sub(r'\s$', "", line)
-        if re.match(r'I/main: mirai-console started successfully.*', line) is not None:
+        if line == 'I/main: mirai-console started successfully.':
             ok_mem = shared_memory.SharedMemory(name=ok_mem_str, create=False)
             ok_mem.buf[0] = utils.MemConst.stop()
             ok_mem.close()
@@ -47,6 +48,7 @@ def main(log_path: str, ok_mem_str: str, mem_str: str):
     msg_put_thread.start()
     mem = shared_memory.SharedMemory(name=mem_str, create=False)
     while True:
+        time.sleep(0.001)
         if mem.buf[0] == utils.MemConst.stop():
             mirai_sub_proc.terminate()
             logger.log('info', 'Core stopped.')

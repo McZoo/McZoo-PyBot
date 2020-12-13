@@ -190,6 +190,8 @@ class Logger:
             self.logger_inst.error(exception, exc_info=True)
         if lvl == 'critical':
             self.logger_inst.critical(exception, exc_info=True)
+        if lvl == 'fake':
+            return
 
 
 def listdir(path: str, remove_suffix: bool = False):
