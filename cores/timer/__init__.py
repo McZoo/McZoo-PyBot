@@ -1,4 +1,5 @@
-import multiprocessing
+from multiprocessing import shared_memory
+import sys
 import threading
 import time
 
@@ -9,18 +10,25 @@ VERSION_STR: str = '0.0.0'
 REGISTRY_NAME: str = 'timer'
 
 
-def main(log_path: str, session: utils.Session, cfg: utils.Config, stop_queue: multiprocessing.Queue):
-    if log_path:
-        pass
-    shut = threading.Thread(target=utils.shut_monitor, args=(stop_queue,))
-    shut.start()
+def main(log_path: str, session: utils.Session, cfg: utils.Config, mem_str: str):
+    logger = utils.Logger('TIMER', 'debug', log_path)
+    parser = threading.Thread(target=parse, args=(cfg, session))
+    parser.start()
+    mem = shared_memory.SharedMemory(name=mem_str, create=False)
+    while True:
+        if mem == utils.MemConst.stop():
+            logger.log('info', 'Core stopped.')
+            sys.exit()
+
+
+def parse(cfg: utils.Config, session: utils.Session):
     while True:
         cur_time: tuple = time.localtime(time.time())
-        if cur_time[4] % 5 == 0:
+        if cur_time[4] % 10 == 0 and cur_time[5] == 0:
             reply_list = [{
                 "type": "Plain",
-                "text": "现在是" + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}
+                "text": "现在是 {0}".format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))}
             ]
             for u in cfg.config_dict['group']:
                 utils.send_list(cfg, session.session_dict, u, reply_list, 'group')
-        time.sleep(60)
+        time.sleep(1)

@@ -4,6 +4,8 @@ import time
 import utils
 
 REGISTRY_NAME = 'group_auto_reply'
+VERSION_TUPLE = (0, 0, 1)
+VERSION_STR = '0.0.1'
 
 
 def websockets_parser(parsed_msg: dict, logger: utils.Logger, session: utils.Session, cfg: utils.Config):
@@ -86,7 +88,7 @@ def websockets_parser(parsed_msg: dict, logger: utils.Logger, session: utils.Ses
                 reply_list = [
                     {
                         "type": "Plain",
-                        "text": '现在是' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}
+                        "text": "现在是 {0}".format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))}
                 ]
                 utils.send_list(cfg, session.session_dict, parsed_msg['group_id'], reply_list, 'group')
             if re.search(r'!!help', i) is not None:

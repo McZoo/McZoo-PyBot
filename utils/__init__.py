@@ -1,9 +1,7 @@
 import importlib
 import json
 import logging
-import multiprocessing
 import os
-import sys
 import threading
 
 import requests
@@ -18,8 +16,8 @@ class Config:
         """
         yaml_fs = open(os.path.abspath(configs_path), "r")
         self.config_dict = yaml.load(yaml_fs, Loader=yaml.Loader)
-        self.httpip = self.config_dict['HttpIP']
-        self.websockets_ip = self.config_dict['Websockets_IP']
+        self.httpip = 'http://{0}:{1}'.format(self.config_dict['IP'], self.config_dict['Port'])
+        self.websockets_ip = 'ws://{0}:{1}'.format(self.config_dict['IP'], self.config_dict['Port'])
         yaml_fs.close()
 
 
@@ -102,6 +100,25 @@ class Threader:
         gen_thread = threading.Thread(target=target_func, args=params, daemon=True)
         self.pool.append(gen_thread)
         gen_thread.start()
+
+
+class VersionError(Exception):
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+class MemConst:
+    """
+    The class of memory consts.One byte.To be used as flags in shared memory.
+    """
+
+    @staticmethod
+    def stop():
+        return 255
+
+    @staticmethod
+    def init():
+        return 0
 
 
 class Logger:
@@ -277,10 +294,3 @@ def msg_basic_parser(msg_dict: dict):
         if len(at_list) > 0:
             returning['at'] = at_list
         return returning
-
-
-def shut_monitor(stop_queue: multiprocessing.Queue):
-    while True:
-        msg = stop_queue.get(block=True)
-        if msg == 'STOP':
-            sys.exit()
