@@ -25,7 +25,7 @@ def websockets_parser(parsed_msg: dict, logger: utils.Logger, session: utils.Ses
                 utils.send_list(cfg, session.session_dict, parsed_msg['group_id'], reply_list, 'group')
     if parsed_msg.get('plain') is not None:
         for i in parsed_msg['plain']:
-            if re.search(r'ping', i) is not None:
+            if i == 'ping':
                 reply_list = [
                     {
                         "type": "At",

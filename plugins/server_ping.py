@@ -112,15 +112,6 @@ class StatusPing:
         response = json.loads(data.decode('utf8'))
         return response
 
-    def get_stat_until_complete(self, logger: utils.Logger):
-        res = None
-        while res is None:
-            try:
-                res = self.get_status()
-            except Exception as e:
-                logger.stacktrace(e, 'fake')
-        return res
-
 
 def websockets_parser(parsed_msg: dict, logger: utils.Logger, session: utils.Session, cfg: utils.Config):
     if logger:
@@ -139,18 +130,24 @@ def websockets_parser(parsed_msg: dict, logger: utils.Logger, session: utils.Ses
                 else:
                     status = StatusPing(args[1])
                 try:
-                    res = status.get_stat_until_complete(logger)
+                    res = status.get_status()
+                except socket.timeout:
+                    reply_list = [
+                        {
+                            "type": "Plain",
+                            "text": '连接超时\r\n'
+                        }
+                    ]
+                else:
                     server_version: str = str.replace(res['version']['name'], 'Requires ', '')
                     player: list = [res['players']['online'], res['players']['max']]
                     desc: list[str] = str.split(res['description'], '\n')
                     for v in desc:
                         v.strip(' ')
                     icon_str = res['favicon']
+                    if icon_str is not None:
+                        pass  # TODO: Convert
                     reply_list = [
-                        {
-                            "type": "Image",
-                            "url": icon_str
-                        },
                         {
                             "type": "Plain",
                             "text": '{0}\r\n'.format(args[1])
@@ -169,14 +166,6 @@ def websockets_parser(parsed_msg: dict, logger: utils.Logger, session: utils.Ses
                             "type": "Plain",
                             "text": '{0}\r\n'.format(v)
                         })
-                except Exception as e:
-                    logger.stacktrace(e, 'error')
-                    reply_list = [
-                        {
-                            "type": "Plain",
-                            "text": '参数错误\r\n'
-                        }
-                    ]
             else:
                 reply_list = [
                     {
